@@ -22,26 +22,16 @@
 ## 安装
 
 ```bash
-git clone https://github.com/<your-name>/NTE-keyboard-helper.git
+git clone https://github.com/OnlyblackTea/NTE-keyboard-helper.git
 cd NTE-keyboard-helper
 python piano.py --keys
 ```
 
-Python 3.9 及以上。**Windows 上零依赖**，只用标准库；macOS / Linux 需要
-`pip install pynput` 才能发按键。
-
-<details>
-<summary><b>Windows 上为什么一个包都不用装</b></summary>
-
-按键走 `ctypes` 调 `user32.SendInput`，`INPUT` 结构体按 Win32 的 40 字节
-（x64）严格对齐；时间轴用 `winmm.timeBeginPeriod(1)` 把系统计时精度从约
-15ms 提到 1ms，再用 `perf_counter` 对齐。没有第三方依赖，也不装驱动。
-
-</details>
+Python 3.9 及以上。只用标准库；macOS / Linux 需要 `pip install pynput` 才能发按键。
 
 ## 快速开始
 
-1. **先自检**，确认按键这条链路是通的：
+1. **自检**，确认按键可用：
 
    ```bash
    python piano.py --self-test
@@ -58,7 +48,7 @@ Python 3.9 及以上。**Windows 上零依赖**，只用标准库；macOS / Linu
 
 3. **随时中止**：默认是全局 `Esc`，焦点在哪个窗口都有效。
 
-不想真的按键时，用 `--print` 只看演奏计划：
+用 `--print` 只看演奏计划：
 
 ```bash
 python piano.py scores/canon.txt --print
@@ -230,13 +220,9 @@ python piano.py <曲谱> [选项]
 | `rhythm_demo.txt` | 附点与三连音 |
 | `syntax_demo.txt` | 把全部记谱语法过一遍 |
 | `happy_birthday.csv` | csv 格式示例 |
-| `spring.txt` | 原创抒情小品，双声部 |
-| `haruhikage*.txt` | 个人扒的谱，仅作练习 |
 
 > [!NOTE]
-> 除 `haruhikage*.txt` 外，`scores/` 里的内容随本项目的 MIT 许可一起授权。
-> `haruhikage*.txt` 是对已有歌曲的转录，版权归原作者所有，仓库里只作为个人练习保留，
-> 不建议公开分发。
+> `scores/` 里的内容版权归原作者所有，仓库里只作为个人练习保留，不建议公开分发。
 
 ## 许可证
 
