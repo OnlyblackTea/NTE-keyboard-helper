@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="180" viewBox="0 0 640 180" role="img" aria-label="NTE-keyboard-helper">
+  <rect x="1" y="1" width="638" height="178" rx="16" fill="#0d1117" stroke="#232c38" stroke-width="2"/>
+
+  <text x="320" y="66" text-anchor="middle"
+        font-family="ui-monospace,SFMono-Regular,Consolas,'Courier New',monospace"
+        font-size="27" font-weight="600" fill="#e6edf6" letter-spacing="0.5">NTE-keyboard-helper</text>
+
+  <text x="320" y="92" text-anchor="middle"
+        font-family="ui-monospace,SFMono-Regular,Consolas,monospace"
+        font-size="11" fill="#7c8a9e" letter-spacing="5">SCORE TO KEYSTROKE</text>
+
+  <g transform="translate(60,116)">
+    <rect x="0" y="0" width="520" height="44" rx="5" fill="#eef3fa"/>
+    <rect x="86.67" y="0" width="43.33" height="44" fill="#4cc2ff" opacity="0.85"/>
+    <rect x="303.33" y="0" width="43.33" height="44" fill="#ffa94d" opacity="0.9"/>
+    <path d="M43.33 0V44 M86.67 0V44 M130 0V44 M173.33 0V44 M216.67 0V44 M260 0V44 M303.33 0V44 M346.67 0V44 M390 0V44 M433.33 0V44 M476.67 0V44"
+          stroke="#c3ccda" stroke-width="1"/>
+    <g fill="#1b2029">
+      <rect x="36.83" y="0" width="13" height="27" rx="2"/>
+      <rect x="80.17" y="0" width="13" height="27" rx="2"/>
+      <rect x="166.83" y="0" width="13" height="27" rx="2"/>
+      <rect x="210.17" y="0" width="13" height="27" rx="2"/>
+      <rect x="253.5" y="0" width="13" height="27" rx="2"/>
+    </g>
+  </g>
+</svg>

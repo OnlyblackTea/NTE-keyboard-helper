@@ -1,0 +1,5 @@
+﻿# 统一按 LF 存，Windows 上也不会到处 CRLF
+* text=auto eol=lf
+
+*.png binary
+*.mid binary

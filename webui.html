@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>键盘小钢琴 · 谱面编辑器</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d1117'/%3E%3Crect x='6' y='7' width='4' height='18' rx='1' fill='%23dbe3ee'/%3E%3Crect x='14' y='7' width='4' height='18' rx='1' fill='%234cc2ff'/%3E%3Crect x='22' y='7' width='4' height='18' rx='1' fill='%23dbe3ee'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161c25;
+    --line: #2a323d;
+    --text: #dbe3ee;
+    --muted: #8b97a8;
+    --accent: #4cc2ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    display: flex; flex-direction: column;
+  }
+  header { padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); flex: none; }
+  h1 { font-size: 15px; margin: 0 0 10px; font-weight: 600; letter-spacing: .04em; }
+  h1 span { color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 8px; }
+  .row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .row + .row { margin-top: 9px; }
+  label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+  input, select {
+    background: #0a0e14; color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 5px 8px; font: inherit; font-size: 13px;
+  }
+  input[type=number] { width: 78px; }
+  #title { width: 170px; }
+  button {
+    background: #1f2733; color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer;
+  }
+  button:hover { background: #28323f; border-color: #3a4655; }
+  button.primary { background: #1b5c7d; border-color: #2a7fa8; }
+  button.primary:hover { background: #22718f; }
+  #status { margin-left: auto; color: var(--muted); font-size: 12px; min-height: 18px; }
+  main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  #roll { flex: 1; overflow: auto; padding: 12px 16px 16px; }
+  canvas { display: block; border-radius: 8px; cursor: crosshair; }
+  #text {
+    margin: 0; padding: 12px 16px; border-top: 1px solid var(--line);
+    background: #0a0e14; color: #8fd5a0; height: 170px; flex: none; overflow: auto;
+    font: 12px/1.65 ui-monospace, Consolas, "Cascadia Mono", monospace; white-space: pre;
+  }
+  #hint { color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>谱面编辑器 <span>点格子写音符，写好的 txt 交给 piano.py 演奏</span></h1>
+
+  <div class="row">
+    <label>标题 <input id="title" type="text" value="未命名" maxlength="40"></label>
+    <label>BPM <input id="bpm" type="number" value="120" min="30" max="300" step="1"></label>
+    <label>按住 <input id="gate" type="number" value="0.9" min="0.05" max="1" step="0.05"></label>
+    <label>时值
+      <select id="len">
+        <option value="1920">全音符（4 拍）</option>
+        <option value="960">二分（2 拍）</option>
+        <option value="720">附点四分（1.5 拍）</option>
+        <option value="480" selected>四分（1 拍）</option>
+        <option value="360">附点八分（0.75 拍）</option>
+        <option value="240">八分（0.5 拍）</option>
+        <option value="160">三连音八分（1/3 拍）</option>
+        <option value="120">十六分（0.25 拍）</option>
+      </select>
+    </label>
+    <label>网格
+      <select id="grid">
+        <option value="480">四分</option>
+        <option value="240" selected>八分</option>
+        <option value="160">三连音八分</option>
+        <option value="120">十六分</option>
+      </select>
+    </label>
+    <label>拍号
+      <select id="meter">
+        <option value="4/4" selected>4/4</option>
+        <option value="3/4">3/4</option>
+        <option value="2/4">2/4</option>
+        <option value="6/8">6/8</option>
+        <option value="3/8">3/8</option>
+        <option value="12/8">12/8</option>
+        <option value="">自由</option>
+      </select>
+    </label>
+    <button id="play" class="primary">▶ 试听</button>
+    <button id="stop">■ 停止</button>
+    <button id="clear">清空</button>
+    <span id="status"></span>
+  </div>
+
+  <div class="row">
+    <select id="loadsel"><option value="">载入已有曲谱…</option></select>
+    <label>声部 <select id="voice"><option value="1">1</option></select></label>
+    <button id="save">保存到 scores/</button>
+    <button id="saveas">另存为…</button>
+    <button id="download">下载 txt</button>
+    <span id="hint">点格子加音符，再点一次删掉；拖动可连续画。保存会按当前内容重写整份文件，手写的注释不会保留。</span>
+  </div>
+</header>
+
+<main>
+  <div id="roll"><canvas id="canvas"></canvas></div>
+  <pre id="text"></pre>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const $ = id => document.getElementById(id);
+
+  const ROW_H = 14, BEAT_W = 44, LABEL_W = 74, HEAD_H = 26;
+  const BLACK_PC = new Set([1, 3, 6, 8, 10]);
+  const VOICE_COLORS = ['#4cc2ff', '#ffa94d', '#a78bfa', '#4ade80', '#f472b6', '#facc15'];
+
+  function voiceColor(name) {
+    const text = String(name || '1');
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+      hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
+    }
+    return VOICE_COLORS[hash % VOICE_COLORS.length];
+  }
+
+  let LOW = 52, HIGH = 87, ROWS = 36;
+  let keyNames = {}, noteNames = {};
+  let notes = [];                 // {tick, ticks, midi, voice}，tick 单位是 1/480 四分音符
+  let painting = null;            // 'add' | 'erase' | null
+  let playing = false, audio = null, playStart = 0, playEnd = 0, rafId = 0;
+  let sources = [];
+  let renderTimer = 0, statusTimer = 0;
+  let currentName = '';           // 当前编辑的文件名，保存时优先用它
+
+  // ---------------------------------------------------------------- 绘图
+
+  const PPQ = 480;    // 一个四分音符的 tick 数，和 piano.py 保持一致
+
+  const xOf = tick => LABEL_W + (tick / PPQ) * BEAT_W;
+  const yOf = midi => HEAD_H + (HIGH - midi) * ROW_H;
+
+  function meterParts() {
+    const value = $('meter').value;
+    if (!value) return null;
+    const parts = value.split('/').map(Number);
+    if (!parts[0] || !parts[1]) return null;
+    return { num: parts[0], den: parts[1] };
+  }
+
+  function barTicks() {
+    const m = meterParts();
+    return m ? PPQ * 4 * m.num / m.den : 0;
+  }
+
+  function beatTicks() {
+    const m = meterParts();
+    return m ? PPQ * 4 / m.den : PPQ;
+  }
+
+  function gridTicks() {
+    return parseInt($('grid').value, 10) || PPQ;
+  }
+
+  function totalTicks() {
+    const bar = barTicks() || PPQ * 4;
+    let end = bar * 8;
+    for (const n of notes) end = Math.max(end, n.tick + n.ticks);
+    return Math.ceil(end / bar) * bar + bar * 2;
+  }
+
+  function setupCanvas() {
+    const ticks = totalTicks();
+    const cssW = LABEL_W + (ticks / PPQ) * BEAT_W;
+    const cssH = HEAD_H + ROWS * ROW_H;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    canvas.style.width = cssW + 'px';
+    canvas.style.height = cssH + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ticks: ticks, cssW: cssW, cssH: cssH };
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function draw() {
+    const size = setupCanvas();
+    const total = size.ticks, cssW = size.cssW, cssH = size.cssH;
+    const rollW = cssW - LABEL_W;
+
+    ctx.fillStyle = '#0d1117';
+    ctx.fillRect(0, 0, cssW, cssH);
+
+    // 音高行
+    for (let i = 0; i < ROWS; i++) {
+      const midi = HIGH - i;
+      const y = HEAD_H + i * ROW_H;
+      const pc = ((midi % 12) + 12) % 12;
+      ctx.fillStyle = BLACK_PC.has(pc) ? '#141a23' : '#1a212b';
+      ctx.fillRect(LABEL_W, y, rollW, ROW_H);
+      if (pc === 0) {
+        ctx.fillStyle = '#39424f';
+        ctx.fillRect(LABEL_W, y + ROW_H - 1, rollW, 1);
+      }
+    }
+
+    // 竖线：网格(细) / 拍(中) / 小节(粗)
+    const grid = gridTicks(), beat = beatTicks(), bar = barTicks();
+    const marks = new Map();
+    for (let t = 0; t <= total; t += grid) marks.set(t, 0);
+    for (let t = 0; t <= total; t += beat) marks.set(t, 1);
+    if (bar) for (let t = 0; t <= total; t += bar) marks.set(t, 2);
+    const colors = ['#1d242e', '#2f3945', '#4d5a6b'];
+    ctx.lineWidth = 1;
+    marks.forEach(function (level, t) {
+      const x = Math.round(xOf(t)) + 0.5;
+      ctx.strokeStyle = colors[level];
+      ctx.beginPath();
+      ctx.moveTo(x, HEAD_H);
+      ctx.lineTo(x, cssH);
+      ctx.stroke();
+    });
+
+    // 小节号
+    ctx.fillStyle = '#6f7d8f';
+    ctx.font = '11px ui-monospace, Consolas, monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    const barTick = bar || PPQ * 4;
+    for (let t = 0, index = 1; t <= total; t += barTick, index++) {
+      ctx.fillText(String(index), xOf(t) + 5, HEAD_H / 2 + 1);
+    }
+
+    // 左侧键名列
+    ctx.fillStyle = '#10151c';
+    ctx.fillRect(0, 0, LABEL_W, cssH);
+    ctx.strokeStyle = '#2a323d';
+    ctx.beginPath();
+    ctx.moveTo(LABEL_W - 0.5, HEAD_H);
+    ctx.lineTo(LABEL_W - 0.5, cssH);
+    ctx.stroke();
+    ctx.font = '10px ui-monospace, Consolas, monospace';
+    for (let i = 0; i < ROWS; i++) {
+      const midi = HIGH - i;
+      const pc = ((midi % 12) + 12) % 12;
+      ctx.fillStyle = pc === 0 ? '#4cc2ff' : '#6f7d8f';
+      ctx.fillText((keyNames[midi] || '?') + ' ' + (noteNames[midi] || ''), 7,
+                   HEAD_H + i * ROW_H + ROW_H / 2 + 1);
+    }
+
+    // 音符
+    for (const n of notes) {
+      const x = xOf(n.tick);
+      const w = Math.max(7, (n.ticks / PPQ) * BEAT_W - 3);
+      const y = yOf(n.midi);
+      ctx.fillStyle = voiceColor(n.voice);
+      roundRect(x + 1.5, y + 2, w, ROW_H - 4, 3);
+      ctx.fill();
+    }
+
+    // 播放头
+    if (playing && audio) {
+      const bpm = parseFloat($('bpm').value) || 120;
+      const position = (audio.currentTime - playStart) * (bpm / 60) * PPQ;
+      if (position >= 0) {
+        const x = Math.round(xOf(position)) + 0.5;
+        ctx.strokeStyle = '#ffd166';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x, HEAD_H);
+        ctx.lineTo(x, cssH);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------- 编辑
+
+  function cellAt(ev) {
+    const rect = canvas.getBoundingClientRect();
+    const x = ev.clientX - rect.left;
+    const y = ev.clientY - rect.top;
+    if (x < LABEL_W || y < HEAD_H) return null;
+    const step = gridTicks();
+    const raw = (x - LABEL_W) / BEAT_W * PPQ;
+    const midi = HIGH - Math.floor((y - HEAD_H) / ROW_H);
+    if (midi < LOW || midi > HIGH) return null;
+    return { tick: Math.floor(raw / step) * step, midi: midi };
+  }
+
+  function indexAt(tick, midi) {
+    for (let i = 0; i < notes.length; i++) {
+      const n = notes[i];
+      if (n.midi === midi && tick >= n.tick && tick < n.tick + n.ticks) return i;
+    }
+    return -1;
+  }
+
+  function addNote(tick, midi) {
+    const ticks = parseInt($('len').value, 10) || PPQ;
+    const voice = $('voice').value || '1';
+    notes.push({ tick: tick, ticks: ticks, midi: midi, voice: voice });
+    notes.sort(function (a, b) { return (a.tick - b.tick) || (a.midi - b.midi); });
+  }
+
+  canvas.addEventListener('pointerdown', function (ev) {
+    const cell = cellAt(ev);
+    if (!cell) return;
+    // 合成事件 / 某些指点设备上 setPointerCapture 会抛错，不该因此丢掉这次点击
+    try { canvas.setPointerCapture(ev.pointerId); } catch (e) { /* ignore */ }    const idx = indexAt(cell.tick, cell.midi);
+    if (idx >= 0) {
+      notes.splice(idx, 1);
+      painting = 'erase';
+    } else {
+      addNote(cell.tick, cell.midi);
+      painting = 'add';
+    }
+    refresh();
+  });
+
+  canvas.addEventListener('pointermove', function (ev) {
+    if (!painting) return;
+    const cell = cellAt(ev);
+    if (!cell) return;
+    const idx = indexAt(cell.tick, cell.midi);
+    if (painting === 'add' && idx < 0) {
+      addNote(cell.tick, cell.midi);
+      refresh();
+    } else if (painting === 'erase' && idx >= 0) {
+      notes.splice(idx, 1);
+      refresh();
+    }
+  });
+
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (name) {
+    canvas.addEventListener(name, function () { painting = null; });
+  });
+
+  // ---------------------------------------------------------------- 状态 / 预览
+
+  function updateStatus() {
+    const bpm = parseFloat($('bpm').value) || 120;
+    let end = 0;
+    for (const n of notes) end = Math.max(end, n.tick + n.ticks);
+    const bars = barTicks();
+    const tail = bars ? '（' + (end / bars).toFixed(1) + ' 小节）' : '';
+    $('status').textContent = notes.length + ' 个音 · ' +
+      (end / PPQ * 60 / bpm).toFixed(1) + ' 秒' + tail;
+  }
+
+  function setStatus(text) {
+    $('status').textContent = text;
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(updateStatus, 2600);
+  }
+
+  function syncVoices() {
+    const sel = $('voice');
+    const current = sel.value;
+    const names = [];
+    for (const n of notes) {
+      const name = n.voice || '1';
+      if (names.indexOf(name) < 0) names.push(name);
+    }
+    if (!names.length) names.push('1');
+    const signature = names.join('\u0000');
+    if (sel.dataset.signature === signature) return;
+    sel.dataset.signature = signature;
+    sel.innerHTML = '';
+    for (const name of names) {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      sel.appendChild(opt);
+    }
+    sel.value = names.indexOf(current) >= 0 ? current : names[0];
+  }
+
+  function refresh() {
+    syncVoices();
+    draw();
+    updateStatus();
+    scheduleRender();
+  }
+
+  function payload() {
+    const groups = new Map();
+    for (const n of notes) {
+      const voice = n.voice || '1';
+      const key = voice + '|' + n.tick + '|' + n.ticks;
+      let group = groups.get(key);
+      if (!group) {
+        group = { tick: n.tick, ticks: n.ticks, midis: [], voice: voice };
+        groups.set(key, group);
+      }
+      group.midis.push(n.midi);
+    }
+    const list = Array.from(groups.values()).sort(function (a, b) { return a.tick - b.tick; });
+    const meter = $('meter').value ? $('meter').value.split('/').map(Number) : null;
+    return {
+      title: $('title').value,
+      bpm: parseFloat($('bpm').value) || 120,
+      gate: parseFloat($('gate').value) || 0.9,
+      meter: meter,
+      notes: list
+    };
+  }
+
+  let lastText = '';
+
+  function scheduleRender() {
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(doRender, 220);
+  }
+
+  function doRender() {
+    if (!notes.length) {
+      lastText = '# 点左边的格子添加音符，这里会实时生成 txt 曲谱\n';
+      $('text').textContent = lastText;
+      return;
+    }
+    fetch('/api/render', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload())
+    }).then(function (res) { return res.json(); }).then(function (data) {
+      if (data.error) { setStatus('生成失败：' + data.error); return; }
+      lastText = data.text;
+      $('text').textContent = lastText;
+    }).catch(function (err) {
+      setStatus('生成失败：' + err);
+    });
+  }
+
+  // ---------------------------------------------------------------- 试听
+
+  function audioCtx() {
+    if (!audio) {
+      audio = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audio;
+  }
+
+  function makeWave(ac) {
+    const real = new Float32Array([0, 0, 0, 0, 0, 0, 0, 0]);
+    const imag = new Float32Array([0, 1, 0.52, 0.3, 0.18, 0.1, 0.06, 0.03]);
+    return ac.createPeriodicWave(real, imag);
+  }
+
+  function play() {
+    stop();
+    if (!notes.length) { setStatus('还没有音符'); return; }
+    const ac = audioCtx();
+    if (ac.state === 'suspended') ac.resume();
+
+    const bpm = parseFloat($('bpm').value) || 120;
+    const spb = 60 / bpm;
+    const gate = Math.min(1, Math.max(0.05, parseFloat($('gate').value) || 0.9));
+    const t0 = ac.currentTime + 0.12;
+    const wave = makeWave(ac);
+
+    const chordSize = new Map();
+    for (const n of notes) chordSize.set(n.tick, (chordSize.get(n.tick) || 0) + 1);
+
+    let end = 0;
+    for (const n of notes) {
+      const start = t0 + (n.tick / PPQ) * spb;
+      const dur = Math.max(0.09, (n.ticks / PPQ) * spb * gate);
+      const osc = ac.createOscillator();
+      osc.setPeriodicWave(wave);
+      osc.frequency.value = 440 * Math.pow(2, (n.midi - 69) / 12);
+
+      const gain = ac.createGain();
+      const peak = 0.26 / Math.sqrt(chordSize.get(n.tick) || 1);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(peak, start + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0008, start + dur);
+
+      osc.connect(gain);
+      gain.connect(ac.destination);
+      osc.start(start);
+      osc.stop(start + dur + 0.03);
+      sources.push(osc);
+      end = Math.max(end, (n.tick / PPQ) * spb + dur);
+    }
+
+    playing = true;
+    playStart = t0;
+    playEnd = t0 + end;
+    requestAnimationFrame(loop);
+  }
+
+  function loop() {
+    if (!playing) return;
+    draw();
+    if (!audio || audio.currentTime > playEnd + 0.12) {
+      playing = false;
+      draw();
+      return;
+    }
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function stop() {
+    playing = false;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    for (const osc of sources) {
+      try { osc.stop(); } catch (e) { /* 已经停了 */ }
+      try { osc.disconnect(); } catch (e) { /* ignore */ }
+    }
+    sources = [];
+    draw();
+  }
+
+  // ---------------------------------------------------------------- 存取
+
+  function loadList() {
+    return fetch('/api/scores').then(function (res) { return res.json(); })
+      .then(function (data) {
+        const sel = $('loadsel');
+        sel.innerHTML = '<option value="">载入已有曲谱…</option>';
+        (data.scores || []).forEach(function (item) {
+          const opt = document.createElement('option');
+          opt.value = item.name;
+          opt.textContent = item.title;
+          sel.appendChild(opt);
+        });
+      });
+  }
+
+  function loadScore(name) {
+    fetch('/api/score?name=' + encodeURIComponent(name))
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.error) { setStatus('载入失败：' + data.error); return; }
+        notes = [];
+        (data.notes || []).forEach(function (ev) {
+          const tick = (ev.tick !== undefined) ? ev.tick : Math.round(ev.beat * PPQ);
+          const ticks = (ev.ticks !== undefined) ? ev.ticks : Math.round(ev.beats * PPQ);
+          (ev.midis || []).forEach(function (midi) {
+            notes.push({ tick: tick, ticks: ticks, midi: midi, voice: ev.voice || '1' });
+          });
+        });
+        notes.sort(function (a, b) { return (a.tick - b.tick) || (a.midi - b.midi); });
+        $('voice').dataset.signature = '';
+        const meterSelect = $('meter');
+        if (data.meter) {
+          const label = data.meter[0] + '/' + data.meter[1];
+          if (!Array.prototype.some.call(meterSelect.options, function (o) { return o.value === label; })) {
+            const opt = document.createElement('option');
+            opt.value = label;
+            opt.textContent = label;
+            meterSelect.appendChild(opt);
+          }
+          meterSelect.value = label;
+        } else {
+          meterSelect.value = '4/4';
+        }
+        $('title').value = data.title || name.replace(/\.(txt|csv)$/i, '');
+        currentName = data.name || '';
+        updateSaveLabel();
+        $('bpm').value = Math.round(data.bpm || 120);
+        $('gate').value = data.gate || 0.9;
+        refresh();
+        setStatus('已载入 ' + name);
+      })
+      .catch(function (err) { setStatus('载入失败：' + err); });
+  }
+
+  function save() {
+    const name = currentName ? currentName.replace(/\.txt$/i, '')
+                             : ($('title').value || 'untitled').trim();
+    saveTo(name);
+  }
+
+  function saveAs() {
+    if (!notes.length) { setStatus('还没有音符'); return; }
+    const suggested = ($('title').value || 'untitled').trim();
+    const answer = window.prompt('另存为（文件名，不用写 .txt）', suggested);
+    if (answer === null) return;
+    const name = answer.trim();
+    if (name) saveTo(name);
+  }
+
+  function updateSaveLabel() {
+    $('save').textContent = currentName ? ('保存到 ' + currentName) : '保存到 scores/';
+  }
+
+  function saveTo(name) {
+    if (!notes.length) { setStatus('还没有音符'); return; }
+    const body = payload();
+    body.name = name;
+    fetch('/api/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (res) { return res.json(); }).then(function (data) {
+      if (data.error) { setStatus('保存失败：' + data.error); return; }
+      lastText = data.text;
+      $('text').textContent = lastText;
+      currentName = data.file;
+      updateSaveLabel();
+      setStatus((data.overwrote ? '已覆盖 scores/' : '已保存 scores/') + data.file
+                + (data.backup ? '（旧版存在 ' + data.backup + '）' : ''));
+      loadList();
+    }).catch(function (err) { setStatus('保存失败：' + err); });
+  }
+
+  function download() {
+    const text = $('text').textContent || '';
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = (($('title').value || 'score').trim() || 'score') + '.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(function () { URL.revokeObjectURL(link.href); }, 1500);
+  }
+
+  function clearAll() {
+    if (notes.length && !window.confirm('清空当前所有音符？')) return;
+    notes = [];
+    currentName = '';
+    updateSaveLabel();
+    refresh();
+  }
+
+  // ---------------------------------------------------------------- 绑定
+
+  $('play').addEventListener('click', play);
+  $('stop').addEventListener('click', stop);
+  $('clear').addEventListener('click', clearAll);
+  $('save').addEventListener('click', save);
+  $('saveas').addEventListener('click', saveAs);
+  $('download').addEventListener('click', download);
+  $('loadsel').addEventListener('change', function (ev) {
+    if (ev.target.value) loadScore(ev.target.value);
+    ev.target.value = '';
+  });
+  ['bpm', 'gate', 'title'].forEach(function (id) {
+    $(id).addEventListener('input', function () { updateStatus(); scheduleRender(); });
+  });
+  ['meter', 'grid'].forEach(function (id) {
+    $(id).addEventListener('change', function () { refresh(); });
+  });
+
+  window.addEventListener('keydown', function (ev) {
+    if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT') return;
+    if (ev.code === 'Space') { ev.preventDefault(); playing ? stop() : play(); }
+  });
+
+  // ---------------------------------------------------------------- 启动
+
+  fetch('/api/keys').then(function (res) { return res.json(); }).then(function (data) {
+    LOW = data.low;
+    HIGH = data.high;
+    ROWS = HIGH - LOW + 1;
+    (data.keys || []).forEach(function (item) {
+      keyNames[item.midi] = item.key;
+      noteNames[item.midi] = item.name;
+    });
+    draw();
+    updateStatus();
+  }).catch(function (err) {
+    setStatus('读取键位失败：' + err);
+  });
+
+  loadList();
+  draw();
+  updateSaveLabel();
+  doRender();
+
+  // 支持 /?load=xxx.txt 直接打开某一份曲谱
+  const initial = new URLSearchParams(location.search).get('load');
+  if (initial) loadScore(initial);
+})();
+</script>
+</body>
+</html>

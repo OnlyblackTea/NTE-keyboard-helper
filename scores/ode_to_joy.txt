@@ -1,0 +1,29 @@
+@title 欢乐颂
+@tempo 112
+
+# E4=q  F4=w  G4=r  D4='  C4=l
+# 4/4 拍，每小节 4 拍
+
+# E E F G
+q q w r
+
+# G F E D
+r w q '
+
+# C C D E
+l l ' q
+
+# E. D D   （附点节奏：1.5 + 0.5 + 2 拍）
+q*1.5 '*0.5 '*2
+
+# E E F G
+q q w r
+
+# G F E D
+r w q '
+
+# C C D E
+l l ' q
+
+# D. C C
+'*1.5 l*0.5 l*2

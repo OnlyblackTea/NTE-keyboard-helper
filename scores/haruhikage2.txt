@@ -1,0 +1,16 @@
+@title haruhikage2
+@tempo 180
+@meter 4/4
+@gate 0.92
+
+@voice 和声
+af@1 sh@2 sh@2 sh@1 af@1 af@1 _*2 afl@2 ahl@1 ahl@1 fk@1 sh@1 al@1 _ sh@2.
+af@1 _*2 af@1. sh@2. f@2. af@2
+
+@voice 旋律
+l q q '@8 '@8 w q ' ' ' l@8 l@8 w q '@8 '@8 '@2 l q@1 _*2 q r o i@2 o i@2 o i
+r _ r@2 w w@2 q q@2 f@2 _ q q@2 r@2 _*4 l ' l@4. l@8 l r l w@4. w@8 q '@4. k
+
+@voice 内声部
+_@8 ' _*14 ' _*15 y _@2 _@8 '@2 _@2 _@8 ' _@2 _@8 w@2 _@8 ' _@2 _@8 l@2 _*15
+l@2

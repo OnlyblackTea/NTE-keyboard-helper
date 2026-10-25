@@ -1,0 +1,21 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# 编辑器 / 系统
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 本地备份目录（编辑器覆盖时自动留的旧版都在这里，不入库）
+backup/
+
+# 本地临时文件
+_*.py
+.chrome-shot/
+*.log
